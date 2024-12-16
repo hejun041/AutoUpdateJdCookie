@@ -379,7 +379,7 @@ async def get_jd_pt_key(playwright: Playwright, user, mode) -> Union[str, None]:
     except ImportError:
         headless = False
 
-    args = '--no-sandbox', '--disable-setuid-sandbox'
+    args = '--no-sandbox', '--disable-setuid-sandbox', '--disable-blink-features=AutomationControlled', '--ignore-certificate-errors'
 
     try:
         # 引入代理
@@ -407,8 +407,9 @@ async def get_jd_pt_key(playwright: Playwright, user, mode) -> Union[str, None]:
     try:
         page = await context.new_page()
         await page.set_viewport_size({"width": 360, "height": 640})
-        await page.goto(jd_login_url)
-
+        js = "Object.defineProperties(navigator, {webdriver:{get:()=>undefined}});"
+        await page.add_init_script(js)
+        await page.goto(jd_login_url, wait_until='networkidle')
         if user_datas[user].get("user_type") == "qq":
             await page.get_by_role("checkbox").check()
             await asyncio.sleep(1)
@@ -449,7 +450,7 @@ async def get_jd_pt_key(playwright: Playwright, user, mode) -> Union[str, None]:
                     raise Exception(f"QQ号{user}需要安全验证, 登录失败，请使用其它账号类型")
 
         else:
-            await page.get_by_text("账号密码登录").click()
+            await page.get_by_text("账号密码登录").click(timeout=60000)
 
             username_input = page.locator("#username")
             for u in user:
